@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complaint RPN Calculator</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h2>Upload Complaint Sheet</h2>
+    <input type="file" id="fileInput">
+    <button onclick="uploadFile()">Upload</button>
+
+    
+    <button id="downloadBtn"  onclick="downloadFile()">Download Processed File</button>
+    <script>
+        function uploadFile() {
+            let file = document.getElementById('fileInput').files[0];
+            if (!file) {
+                alert("Please select a file.");
+                return;
+            }
+            let formData = new FormData();
+            formData.append("file", file);
+            
+            fetch("/upload", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                let resultTable = document.getElementById("resultTable");
+                resultTable.innerHTML = "";
+                data.data.forEach(row => {
+                    let tr = document.createElement("tr");
+                    tr.innerHTML = `<td>${row.Observation}</td><td>${row.RPN}</td><td>${row["Risk Level"]}</td>`;
+                    resultTable.appendChild(tr);
+                });
+                
+                document.getElementById("downloadBtn").style.display = "block";
+            })
+            .catch(error => console.error("Error:", error));
+        }
+        
+        function downloadFile() {
+            window.location.href = "/download";
+        }
+    </script>
+</body>
+</html>

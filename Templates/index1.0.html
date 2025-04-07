@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ICSS for CPCBIV+ Infant Care Meet</title>
+    <!-- Bootstrap CSS for an amazing UI -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <style>
+        body {
+            background: #f5f5f5;
+        }
+        .container {
+            margin-top: 50px;
+        }
+        .header-img {
+            max-width: 100%;
+            height: auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .upload-form {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <!-- Replace with your own header image located in static/images/header.jpg -->
+            <img src="{{ url_for('static', filename='image1.png') }}" alt="Header Image" class="header-img">
+            <h1>ICSS for CPCBIV+ Infant Care Meet</h1>
+        </div>
+        <div class="upload-form mx-auto" style="max-width: 600px;">
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                <div class="alert alert-warning">
+                  {% for message in messages %}
+                    <div>{{ message }}</div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            {% endwith %}
+            <form method="post" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="file">Upload Complaints Excel Sheet</label>
+                    <input type="file" class="form-control-file" id="file" name="file" accept=".xlsx, .xls">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Process and Download</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

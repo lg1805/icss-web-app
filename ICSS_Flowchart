@@ -1,0 +1,16 @@
+digraph "ICSS Flowchart" {
+	Start [fillcolor=lightgreen shape=ellipse style=filled]
+	"Fetch Data" [fillcolor=lightblue shape=box style=filled]
+	"Preprocess Data" [fillcolor=lightblue shape=box style=filled]
+	"Classify Complaints" [fillcolor=lightpink shape=diamond style=filled]
+	"Generate Alerts" [fillcolor=yellow shape=box style=filled]
+	"Display Dashboard" [fillcolor=orange shape=box style=filled]
+	End [fillcolor=red shape=ellipse style=filled]
+	Start -> "Fetch Data"
+	"Fetch Data" -> "Preprocess Data"
+	"Preprocess Data" -> "Classify Complaints"
+	"Classify Complaints" -> "Generate Alerts" [label="High Priority"]
+	"Classify Complaints" -> "Display Dashboard" [label="Low/Moderate Priority"]
+	"Generate Alerts" -> "Display Dashboard"
+	"Display Dashboard" -> End
+}
