@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: icss-web-app
+    env: python
+    buildCommand: ""
+    startCommand: python flask-rpnNEW1.py
+    autoDeploy: true
