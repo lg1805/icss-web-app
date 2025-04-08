@@ -8,7 +8,6 @@ app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads/processed/'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# RPN file
 RPN_FILE = r"D:\Lakshya\Project\ICSS_VSCode\PROJECT\ProcessedData\RPN.xlsx"
 rpn_data = pd.read_excel(RPN_FILE)
 known_components = rpn_data["Component"].dropna().unique().tolist()
@@ -52,18 +51,13 @@ def format_creation_date(date_str, month_hint):
 
     try:
         date_str = str(date_str).strip()
-        dt = pd.to_datetime(date_str, dayfirst=True, errors='coerce')
+        dt = pd.to_datetime(date_str, errors='coerce', dayfirst=True)
 
         if pd.notna(dt):
             dd, mm, yyyy = dt.day, dt.month, dt.year
-
             if str(dd).zfill(2) == "01" and str(mm).zfill(2) == "01":
-                dd = int(target_month)
-
-            formatted_date = f"{str(dd).zfill(2)}/{target_month}/{yyyy}"
-            elapsed_days = (datetime.now() - dt).days
-            return formatted_date, elapsed_days
-
+                dd, mm = mm, int(target_month)
+            return f"{str(dd).zfill(2)}/{target_month}/{yyyy}", (datetime.now() - dt).days
     except Exception:
         return None, None
 
@@ -96,73 +90,66 @@ def upload_file():
         if 'Observation' not in df.columns or 'Creation Date' not in df.columns or 'Incident no' not in df.columns:
             return "Required columns missing", 400
 
-        # Format date and calculate elapsed
         formatted_dates = df['Creation Date'].apply(lambda x: format_creation_date(x, month_hint))
         df['Creation Date'] = formatted_dates.apply(lambda x: x[0])
-        df['Elapsed Days'] = formatted_dates.apply(lambda x: x[1])
-        df['Elapsed Days'] = df['Elapsed Days'].fillna(-1).astype(int)  # avoid NaN issues
+        days_elapsed = formatted_dates.apply(lambda x: x[1])
 
         def get_color(elapsed):
             if elapsed == 1:
-                return '#ADD8E6'  # Light Blue
+                return '#ADD8E6'
             elif elapsed == 2:
-                return '#FFFF00'  # Yellow
+                return '#FFFF00'
             elif elapsed == 3:
-                return '#FF1493'  # Pink
+                return '#FF1493'
             elif elapsed > 3:
-                return '#FF0000'  # Red
+                return '#FF0000'
             else:
                 return None
 
-        # RPN-related logic
         df["Component"] = df["Observation"].apply(extract_component)
         df[["Severity (S)", "Occurrence (O)", "Detection (D)"]] = df["Component"].apply(lambda comp: pd.Series(get_rpn_values(comp)))
         df["RPN"] = df["Severity (S)"] * df["Occurrence (O)"] * df["Detection (D)"]
         df["Priority"] = df["RPN"].apply(determine_priority)
 
-        # Split SPN and non-SPN
         spn_df = df[df["Observation"].str.contains("spn", case=False, na=False)]
         non_spn_df = df[~df["Observation"].str.contains("spn", case=False, na=False)]
 
-        # Sort by priority
         priority_order = {"High": 1, "Moderate": 2, "Low": 3}
         spn_df = spn_df.sort_values(by="Priority", key=lambda x: x.map(priority_order))
         non_spn_df = non_spn_df.sort_values(by="Priority", key=lambda x: x.map(priority_order))
 
-        # Final path
         processed_filepath = os.path.join(UPLOAD_FOLDER, 'processed_' + file.filename)
 
-        with pd.ExcelWriter(processed_filepath, engine='xlsxwriter') as writer:
+        spn_df = spn_df.fillna("")
+        non_spn_df = non_spn_df.fillna("")
+
+        with pd.ExcelWriter(processed_filepath, engine='xlsxwriter', engine_kwargs={'options': {'nan_inf_to_errors': True}}) as writer:
             for sheet_name, sheet_df in zip(["SPN", "Non-SPN"], [spn_df, non_spn_df]):
-                sheet_df = sheet_df.fillna('')  # Important to prevent NaN write errors
                 sheet_df.to_excel(writer, sheet_name=sheet_name, index=False)
                 workbook = writer.book
                 worksheet = writer.sheets[sheet_name]
 
-                # Format for coloring
-                green_fmt = workbook.add_format({'bg_color': '#006400'})  # Green for closed
-                formats = {
-                    1: workbook.add_format({'bg_color': '#ADD8E6'}),
-                    2: workbook.add_format({'bg_color': '#FFFF00'}),
-                    3: workbook.add_format({'bg_color': '#FF1493'}),
-                    4: workbook.add_format({'bg_color': '#FF0000'}),
-                }
+                green_fmt = workbook.add_format({'bg_color': '#C6EFCE'})
 
                 for idx, row_idx in enumerate(sheet_df.index):
-                    elapsed = int(sheet_df.loc[row_idx, 'Elapsed Days'])
+                    elapsed = days_elapsed.loc[row_idx]
+                    color = get_color(elapsed)
                     incident_status = str(sheet_df.loc[row_idx, "Incident Status"]).lower()
 
-                    # Color Incident no if elapsed days match
-                    if elapsed >= 1 and elapsed <= 3:
-                        worksheet.write(idx + 1, sheet_df.columns.get_loc("Incident no"), sheet_df.loc[row_idx, "Incident no"], formats[elapsed])
-                    elif elapsed > 3:
-                        worksheet.write(idx + 1, sheet_df.columns.get_loc("Incident no"), sheet_df.loc[row_idx, "Incident no"], formats[4])
-
-                    # Green if closed
                     if "closed" in incident_status or "complete" in incident_status:
                         worksheet.write(idx + 1, sheet_df.columns.get_loc("Incident Status"), sheet_df.loc[row_idx, "Incident Status"], green_fmt)
+                    elif color:
+                        fmt = workbook.add_format({'bg_color': color})
+                        worksheet.write(idx + 1, sheet_df.columns.get_loc("Incident no"), sheet_df.loc[row_idx, "Incident no"], fmt)
 
         return send_file(processed_filepath, as_attachment=True)
 
 if __name__ == '__main__':
     app.run(debug=True)
+# Replace this:
+# app.run(debug=True)
+
+# With this for Render compatibility:
+import os
+port = int(os.environ.get("PORT", 10000))
+app.run(host="0.0.0.0", port=port)
